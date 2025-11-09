@@ -13,7 +13,7 @@ const transporter = nodemailer.createTransport({
 export default async function sendMail(to, text) {
   try {
     await transporter.sendMail({
-      from: `"Parking System" <${process.env.EMAIL_USER}>`,
+      from: process.env.EMAIL_USER,
       to,
       subject: "Parking Notification",
       text,
