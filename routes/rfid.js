@@ -110,41 +110,66 @@ router.get("/free", async (req, res) => {
   try {
     const { slot } = req.query;
 
-    let freedSlot;
-
-    if (slot) {
-      freedSlot = await Slot.findOneAndUpdate(
-        { slotNumber: parseInt(slot) },
-        { occupied: false, vehicleId: null, entryTime: null },
-        { new: true }
-      );
+    if (!slot) {
+      return res.status(400).json({ message: "Slot number is required" });
     }
 
-    if (!freedSlot)
+    const slotDoc = await Slot.findOne({ slotNumber: parseInt(slot) }).populate("vehicleId");
+    if (!slotDoc || !slotDoc.occupied) {
       return res.status(404).json({ message: "No occupied slot to free" });
+    }
+
+    const vehicle = slotDoc.vehicleId;
+
+    const originalMessage = `Slot ${slotDoc.slotNumber} freed for vehicle ${
+      vehicle?.name || "Unknown"
+    }`;
+    const keyWords = [0x19181110, 0x09080100, 0x11109800, 0x01020304];
+
+    const blocks = textToBlocks(originalMessage);
+    const encryptedBlocks = blocks.map(b => simonEncrypt(b, keyWords));
+    const decryptedBlocks = encryptedBlocks.map(b => simonDecrypt(b, keyWords));
+    const encryptedMessage = blocksToText(encryptedBlocks);
+    const decryptedMessage = blocksToText(decryptedBlocks);
+
+    const freedSlot = await Slot.findOneAndUpdate(
+      { slotNumber: parseInt(slot) },
+      { occupied: false, vehicleId: null, entryTime: null },
+      { new: true }
+    );
+
     const deviceIP = req.ip;
     const deviceID = req.headers["x-device-id"] || "unknown";
-    const log = await Log.create({
-      rfid,
-      vehicleName: vehicle.name,
+
+    await Log.create({
+      rfid: vehicle?.rfid || "unknown",
+      vehicleName: vehicle?.name || "Unknown Vehicle",
       action: "exit",
-      slot: freeSlot.slotNumber,
+      slot: slotDoc.slotNumber,
       originalMessage,
       encryptedMessage,
       decryptedMessage,
       deviceID,
-      deviceIP
+      deviceIP,
     });
 
+    if (vehicle?.notificationEmail) {
+      await sendMail(
+        vehicle.notificationEmail,
+        `${vehicle.name} exited from slot ${slotDoc.slotNumber}`
+      );
+    }
+
     return res.json({
-      message: `Slot ${freedSlot.slotNumber} freed`,
-      slot: freedSlot.slotNumber,
+      message: `Slot ${slotDoc.slotNumber} freed successfully`,
+      slot: slotDoc.slotNumber,
     });
   } catch (err) {
     console.error("Error in /free:", err);
     res.status(500).json({ message: "Server error", error: err.message });
   }
 });
+
 
 router.get("/logs/:id", async (req, res) => {
   try {
