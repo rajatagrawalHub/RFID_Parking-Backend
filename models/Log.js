@@ -11,6 +11,8 @@ const LogSchema = new mongoose.Schema({
   encryptedMessage: String,
   receivedMessage: String,
   decryptedMessage: String,
+  deviceID: String,
+  deviceIP: String
 });
 
 export default mongoose.model("Log", LogSchema);

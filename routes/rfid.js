@@ -28,7 +28,8 @@ router.post("/scan", async (req, res) => {
     const encryptedMessage = blocksToText(encryptedBlocks);
     const decryptedMessage = blocksToText(decryptedBlocks);
 
-  
+    const deviceIP = req.ip;
+    const deviceID = req.headers["x-device-id"] || "unknown";
     const vehicle = await Vehicle.findOne({ rfid });
     if (!vehicle) {
       await sendMail("jalan261115@gmail.com", `Unregistered Vehicle detected: ${rfid}`);
@@ -39,6 +40,8 @@ router.post("/scan", async (req, res) => {
         originalMessage,
         encryptedMessage,
         decryptedMessage,
+        deviceID,
+        deviceIP
       });
       return res.status(404).json({ message: "Unregistered Vehicle", log });
     }
@@ -57,6 +60,8 @@ router.post("/scan", async (req, res) => {
         originalMessage,
         encryptedMessage,
         decryptedMessage,
+        deviceID,
+        deviceIP
       });
 
       return res.status(200).json({
@@ -78,7 +83,7 @@ router.post("/scan", async (req, res) => {
     const log = await Log.create({
       rfid,
       vehicleName: vehicle.name,
-      action: "Entry",
+      action: "entry",
       slot: freeSlot.slotNumber,
       originalMessage,
       encryptedMessage,
@@ -117,8 +122,20 @@ router.get("/free", async (req, res) => {
 
     if (!freedSlot)
       return res.status(404).json({ message: "No occupied slot to free" });
+    const deviceIP = req.ip;
+    const deviceID = req.headers["x-device-id"] || "unknown";
+    const log = await Log.create({
+      rfid,
+      vehicleName: vehicle.name,
+      action: "exit",
+      slot: freeSlot.slotNumber,
+      originalMessage,
+      encryptedMessage,
+      decryptedMessage,
+      deviceID,
+      deviceIP
+    });
 
-    
     return res.json({
       message: `Slot ${freedSlot.slotNumber} freed`,
       slot: freedSlot.slotNumber,
