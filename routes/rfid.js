@@ -160,7 +160,7 @@ router.get("/free", async (req, res) => {
       );
     }
 
-    return res.json({
+    return res.status(200).json({
       message: `Slot ${slotDoc.slotNumber} freed successfully`,
       slot: slotDoc.slotNumber,
     });
