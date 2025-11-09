@@ -66,7 +66,7 @@ router.post("/scan", async (req, res) => {
 
       return res.status(200).json({
         message: `Car parked in ${existingSlot.slotNumber}`,
-        slot: existingSlot.slotNumber,
+        slot: 0,
         log,
       });
     }
