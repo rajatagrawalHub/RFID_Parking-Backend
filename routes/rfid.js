@@ -9,6 +9,10 @@ import { simonEncrypt, simonDecrypt, textToBlocks, blocksToText } from "../utils
 
 const router = express.Router();
 
+let lastFreedSlot = null;
+let lastFreedTime = null;
+
+
 router.get("/logs", async (_, res) => {
   const logs = await Log.find().sort({ timestamp: -1 });
   res.json(logs);
@@ -111,7 +115,11 @@ router.get("/free", async (req, res) => {
     const { slot } = req.query;
 
     if (!slot) {
-      return res.status(400).json({ message: "Slot number is required" });
+      if (lastFreedSlot && new Date() - new Date(lastFreedTime) < 10000) {
+        return res.json({ message: "Slot recently freed", slot: lastFreedSlot });
+      } else {
+        return res.json({ message: "No recent free slot", slot: 0 });
+      }
     }
 
     const slotDoc = await Slot.findOne({ slotNumber: parseInt(slot) }).populate("vehicleId");
@@ -121,9 +129,7 @@ router.get("/free", async (req, res) => {
 
     const vehicle = slotDoc.vehicleId;
 
-    const originalMessage = `Slot ${slotDoc.slotNumber} freed for vehicle ${
-      vehicle?.name || "Unknown"
-    }`;
+    const originalMessage = `Slot ${slotDoc.slotNumber} freed for vehicle ${vehicle?.name || "Unknown"}`;
     const keyWords = [0x19181110, 0x09080100, 0x11109800, 0x01020304];
 
     const blocks = textToBlocks(originalMessage);
@@ -132,7 +138,7 @@ router.get("/free", async (req, res) => {
     const encryptedMessage = blocksToText(encryptedBlocks);
     const decryptedMessage = blocksToText(decryptedBlocks);
 
-    const freedSlot = await Slot.findOneAndUpdate(
+    await Slot.findOneAndUpdate(
       { slotNumber: parseInt(slot) },
       { occupied: false, vehicleId: null, entryTime: null },
       { new: true }
@@ -159,6 +165,9 @@ router.get("/free", async (req, res) => {
         `${vehicle.name} exited from slot ${slotDoc.slotNumber}`
       );
     }
+
+    lastFreedSlot = slotDoc.slotNumber;
+    lastFreedTime = new Date();
 
     return res.status(200).json({
       message: `Slot ${slotDoc.slotNumber} freed successfully`,
