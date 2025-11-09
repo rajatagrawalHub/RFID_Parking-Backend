@@ -1,6 +1,6 @@
-// import nodemailer from "nodemailer";
-// import dotenv from "dotenv";
-// dotenv.config();
+import nodemailer from "nodemailer";
+import dotenv from "dotenv";
+dotenv.config();
 
 // const transporter = nodemailer.createTransport({
 //   service: "gmail",
@@ -10,7 +10,7 @@
 //   },
 // });
 
-// export default async function sendMail(to, text) {
+export default async function sendMail(to, text) {
 //   try {
 //     await transporter.sendMail({
 //       from: process.env.EMAIL_USER,
@@ -22,4 +22,4 @@
 //   } catch (err) {
 //     console.error("Email error:", err.message);
 //   }
-// }
+}
